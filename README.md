@@ -1,5 +1,11 @@
 # Decision tree (Claude skill)
 
+![Claude skill](https://img.shields.io/badge/Claude-skill-c25f3c)
+![release](https://img.shields.io/github/v/release/jordanl17/claude-skill-decision-tree?label=release&color=blue)
+![downloads](https://img.shields.io/github/downloads/jordanl17/claude-skill-decision-tree/total?label=downloads&color=blue)
+![updated](https://img.shields.io/github/release-date/jordanl17/claude-skill-decision-tree?label=updated&color=blue)
+![license](https://img.shields.io/github/license/jordanl17/claude-skill-decision-tree?color=blue)
+
 <!--
 PLACEHOLDER: README
 
@@ -46,7 +52,7 @@ Other sections to consider:
 
 ## Install
 
-1. Download `decision-tree.zip` from the latest release.
+1. Download [`decision-tree.zip`](https://github.com/jordanl17/claude-skill-decision-tree/releases/latest/download/decision-tree.zip) from the latest release.
 2. Open [claude.ai/customize/skills](https://claude.ai/customize/skills) (or navigate via **Customize → Skills** in the left sidebar).
 3. Click the **+** button, then **Create Skill** → **Upload a Skill**.
 4. Select the `decision-tree.zip` file you downloaded.
