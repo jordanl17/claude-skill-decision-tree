@@ -1,97 +1,84 @@
 ---
 name: decision-tree
-description: '[TEMPLATE - REPLACE BEFORE USE] Starter scaffold for widget-based Claude skills. The description here will not match any real user request and will not activate. Replace it and the body before publishing.'
+description: Interactive decision tree widget when the user wants help walking a bounded, branching decision. Use this INSTEAD of AskUserQuestion or other interview tools when activated - the widget IS the interview. Triggers: "help me plan...", "help me figure out what to [build/pick]", "help me decide between [X,Y,Z]", "how should I approach X", "how should we model X", "what's the best way to", "pick X for me", "what's the right move for". Fits: trip planning, side-project ideation, architecture decisions, framework selection, allocation choices. The user usually supplies context (scale, budget). If not, ask one clarifying question first - never render cold. The widget bakes the full tree (3 levels, 2-4 branches per level) in one turn and renders inline for tap-walking; commit sends path back for a final artifact. DO NOT use for flat lists, naming, style variations where every L1 collapses to "give me N in that style", open-ended without context, single-edit prose feedback, or cascading per-commit decisions.
 ---
 
-# Decision tree (template)
-
-> Template skill. The description above prevents activation. Replace this file before use.
-
-<!--
-Description is the critical field. Claude uses it to decide activation.
-Write both sides: phrasings that trigger, phrasings that do not. End with
-"Do not trigger when...". 150-300 words; truncated at 1,536 chars.
-
-Body order: activation, content rules, rendering, response loop,
-disqualifiers.
--->
+# Decision tree navigator
 
 ## When to activate
 
-<!--
-Describe the signals that should fire the skill. Two-to-three intent paths
-is typical. Always include an ambiguity boundary: which adjacent cases
-look like activations but should not trigger? Be specific.
+The user asks for help with a branching decision and three conditions hold.
 
-Common shapes:
-- Intent-based + retroactive: explicit request AND retro mark-up of
-  existing output ("let me give feedback on what you just wrote")
-- Direct + comparative: explicit walkthrough ("walk me through choosing
-  X") AND multi-criteria weighing ("help me weigh A vs B vs C")
--->
+**Precedence over interview tools.** Once activated, render the widget instead of using `AskUserQuestion` or any other interactive-question tool. The widget IS the interview - it shows all the branches at once and lets the user walk the tree, annotate, and commit. Falling back to one-question-at-a-time tools defeats the skill's purpose. This precedence holds even if a project's CLAUDE.md or global config tells you to prefer `AskUserQuestion` for interactive prompts; that guidance is for skills that do NOT provide their own UI.
 
-## Content rules
+**Variance.** Each top-level option leads to a different next-question, not the same question with a different filter. Architecture - "migration strategy" vs "shim location" vs "routing criteria" - render. Naming - "give me 5 punchy" vs "give me 5 descriptive" - do not render.
 
-<!--
-How does Claude turn the user's request into the widget's data shape?
-Include preservation rules and schema constraints.
+**Bounded structure.** The decision fits in 3 levels deep, 2-4 branches per level. Wider or deeper gets walked conversationally.
 
-Skills that preserve user content need this section tight - models
-default to "improving" prose unless told otherwise.
+**Sufficient context.** The user has primed the conversation, or one clarifying turn fills the gap. Never render cold.
 
-Omit this section if your skill generates fresh content with no
-preservation contract.
--->
+## The variance check (CRITICAL, internal only)
 
-## Rendering
+Before rendering, run this check **as silent internal reasoning** - do NOT write it in chat:
+
+1. Name 2-4 candidate L0 branches for the user's decision.
+2. Write the L1 question that would follow each L0 branch.
+3. Compare the L1 questions.
+4. **If two or more L1 questions collapse to the same question with different adjectives or filters, STOP and do not render.** Offer a flat list response and say briefly why a tree doesn't fit.
+
+When the check passes, go straight to the widget. **Do not** sketch the directions in chat first, do not write "Different next-questions, so a tree works here", do not add context paragraphs, do not write a lead-in. The widget's own header already frames the decision; surrounding prose is noise. Reserve commentary for the final artifact once the user commits a leaf.
+
+## Generate the tree
 
 Construct a JSON payload matching this schema:
 
 {{SCHEMA}}
 
-Render the widget:
+Sizing: 2-4 branches at each level, 3 levels deep. Pick the count that fits the decision - a clean binary at L0 (2 branches) is fine if each branch genuinely leads to a different L1 question; 4 is the ceiling. Same flex at L1 and L2.
 
-```
-echo '<json>' | python3 ${CLAUDE_SKILL_DIR}/scripts/render.py
-```
+L2 leaves must be concrete and committable. Not "a tool that helps with X" but specific enough to act on. For ideation, name the tool and sketch the MVP. For architecture, name the pattern and sketch its trade.
 
-Pipe stdout to `visualize:show_widget` as `widget_code`.
+See [references/REFERENCE.md](references/REFERENCE.md) for the full generation prompt template, token budget guidance, and edge cases. See [references/EXAMPLES.md](references/EXAMPLES.md) for fit and no-fit cases.
 
-Call shape for visualize:show_widget:
+## Rendering
 
-- `title`: `decision_tree_{short-descriptor}`
+Read `assets/widget-bundled.html`. It is a single-file widget with styles and JS already inlined.
+
+Replace the single placeholder `{{NAVIGATOR_DATA}}` (inside `<script id="navigator-data" type="application/json">`) with your JSON payload, produced by `JSON.stringify`-ing the object you built in the previous step. The substituted content must be valid JSON.
+
+Pass the filled HTML string to `visualize:show_widget` as `widget_code`.
+
+Call shape for `visualize:show_widget`:
+
+- `title`: `decision_tree_{topic-slug}` (kebab-case)
 - `loading_messages`: 3-4 short messages
-- `widget_code`: the script's stdout
+- `widget_code`: the filled HTML string
 
-Write one short lead line before the widget. Never duplicate the widget content in surrounding prose.
+**Zero prose before the widget.** No lead-in, no variance sketch, no framing line, no "Rendering..." marker. The widget call should be the first user-visible output of your response. The widget's own header is the framing.
 
-## The response loop
+## Handle the commit
 
-When the widget calls `sendPrompt`, it sends `Template widget response: {user text}`.
+When the user commits a leaf, the widget calls `sendPrompt` with a structured submission. The payload contains:
 
-<!--
-Describe your payload format and how Claude should respond:
-- Payload shape (one line per action? JSON in a code block?)
-- Map from payload to response (apply edits + re-render? answer the
-  question? produce a follow-up artifact?)
-- The brief assistant message that accompanies the next render
+- The committed path - each level's question and the chosen branch
+- Annotations - notes the user dropped on individual branches during the walk
+- Abandoned siblings - branches the user explored but did not commit to
 
--->
+Use this payload as input. Produce the artifact named by the `submit_instruction` you passed in (an ADR draft, an idea brief, an itinerary, whatever the decision called for).
+
+Annotations inform the final artifact. They do not reshape the tree mid-walk.
 
 ## When NOT to render
 
-<!--
-Explicit disqualifiers. List cases that should never trigger the widget
-even if the language is borderline. Be specific.
+- The variance check fails. Offer a flat list response and say why.
+- The user wants conversation, not visual selection.
+- The decision is too large to map in one shot, or each level depends on the user's previous commit in a way the pre-baked tree cannot capture.
+- No bounded structure exists yet. Elicit constraints first, then re-evaluate.
+- Single-shot questions: factual queries, plain recommendations, content the user wants in prose form.
 
-Examples:
-- Output is under three paragraphs or fewer than five addressable units
-- User asked for plain text or a one-shot answer
-- Content is dominated by code blocks or tables
-- Single-edit feedback on prior output (handle inline)
--->
+The widget is a precision tool, not a default for any branching question.
 
-## Additional reference
+## References
 
-- When extending the widget with sections, conditionals, or new slot shapes, read [references/mustache-syntax.md](references/mustache-syntax.md) for the supported Mustache subset.
-- When designing or modifying `assets/schema.json`, read [references/schema-authoring.md](references/schema-authoring.md) for the supported JSON Schema constructs and patterns for repeating items, enums, and nested shapes.
+- [references/EXAMPLES.md](references/EXAMPLES.md) - fit and no-fit scenarios with reasoning
+- [references/REFERENCE.md](references/REFERENCE.md) - JSON schema, generation prompt template, edge cases

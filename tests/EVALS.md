@@ -11,13 +11,12 @@ Four test surfaces, in order of increasing effort. Pick the right one for the ch
 
 ## Surface 1: Vitest unit + integration suite
 
-Run with `pnpm test`. Three files in [`tests/widget/`](widget/):
+Run with `pnpm test`. Two files in [`tests/widget/`](widget/):
 
-- [`bundle.test.ts`](widget/bundle.test.ts) - static checks against the built `widget-bundled.html`: the inlined `<script>` declares `type="module"` (otherwise it runs before the DOM is ready and breaks all event listeners), runtime slot tokens are preserved, build-time tokens are substituted, critical string literals survive terser, bundle stays under 16 KB.
-- [`widget.test.ts`](widget/widget.test.ts) - jsdom-based runtime checks: loads the bundle into Vitest's jsdom, runs the inlined script via `new Function()` (because jsdom does not execute `<script type="module">` natively), then exercises interactions and verifies `sendPrompt` is called with the right payload.
-- [`render.test.ts`](widget/render.test.ts) - exercises `render.py` directly via `spawnSync`. Happy path fills both slots; missing required slot and invalid JSON both exit non-zero with a clear stderr message.
+- [`bundle.test.ts`](widget/bundle.test.ts) - static checks against the built `widget-bundled.html`: the inlined `<script>` declares `type="module"` (otherwise it runs before the DOM is ready and breaks all event listeners), the single `{{NAVIGATOR_DATA}}` runtime slot is preserved inside the inline navigator-data script tag, critical string literals survive terser, bundle stays under 16 KB.
+- [`widget.test.ts`](widget/widget.test.ts) - jsdom-based runtime checks: loads the bundle into Vitest's jsdom, substitutes the `{{NAVIGATOR_DATA}}` placeholder with a JSON-stringified fixture payload (mirroring what Claude does at skill runtime), re-injects the module script as a plain `<script>` so jsdom executes it, then exercises interactions and verifies `sendPrompt` is called with the right payload.
 
-The widget template now uses Mustache markers (`{{title}}`, `{{prompt}}`) instead of model-substituted placeholders. `render.py` does the substitution deterministically at skill runtime using vendored chevron. `widget.test.ts` invokes `render.py` to produce its test HTML, so the jsdom interaction tests exercise the full template-to-HTML pipeline end-to-end.
+The widget bakes its data via a single `{{NAVIGATOR_DATA}}` placeholder inside `<script id="navigator-data" type="application/json">`. Claude does the substitution at skill runtime with one `String.prototype.replace` call. `widget.test.ts` performs the same substitution, so the jsdom interaction tests exercise the full template-to-HTML pipeline end-to-end.
 
 This is the layer that catches "the script runs but nothing happens" bugs - exactly what the eval suite (which only grades static HTML) cannot.
 
