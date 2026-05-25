@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.3.0...v0.4.0) (2026-05-25)
+
+
+### Features
+
+* restore chevron templating pipeline with structural depth validation ([#5](https://github.com/jordanl17/claude-skill-decision-tree/issues/5)) ([657f34e](https://github.com/jordanl17/claude-skill-decision-tree/commit/657f34e52e38cb7ae5f9a25c831cf40c598a4e2a))
+
 ## [0.3.0](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.2.1...v0.3.0) (2026-05-25)
 
 
