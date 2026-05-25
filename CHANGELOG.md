@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.2.1...v0.3.0) (2026-05-25)
+
+
+### Features
+
+* implement decision-tree skill ([#3](https://github.com/jordanl17/claude-skill-decision-tree/issues/3)) ([05defe3](https://github.com/jordanl17/claude-skill-decision-tree/commit/05defe3abbb90481d1429be662d1da9f5d67552f))
+
 ## [0.2.1](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.2.0...v0.2.1) (2026-05-24)
 
 
