@@ -3,6 +3,7 @@
 node_modules/
 .claude/
 dist/
+skill/
 .husky/_/
 __pycache__/
 *.pyc
