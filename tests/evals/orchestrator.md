@@ -30,7 +30,7 @@ You are evaluating the decision-tree Claude skill.
 INSTRUCTIONS:
 1. Read the skill at {ABSOLUTE_REPO_PATH}/skill/{SKILL_NAME}/SKILL.md. The widget template is at {ABSOLUTE_REPO_PATH}/skill/{SKILL_NAME}/assets/widget-bundled.html - read it if the skill tells you to.
 2. Decide objectively whether the skill should activate for the task below, using the activation rules in SKILL.md. Don't activate just because you read the file; only activate if the rules clearly indicate this prompt should trigger.
-3. If activating: follow the skill's instructions to produce the final widget HTML. The visualize:show_widget tool is NOT available in your environment - instead of calling it, write the FULL filled-in widget HTML to outputs/widget.html (read assets/widget-bundled.html and substitute the single `{{NAVIGATOR_DATA}}` placeholder with `JSON.stringify` of your payload, per the skill's instructions). Also write a brief assistant lead-in message to outputs/response.md.
+3. If activating: follow the skill's instructions to produce the final widget HTML. The visualize:show_widget tool is NOT available in your environment - instead of calling it, pipe the JSON payload through `${ABSOLUTE_REPO_PATH}/skill/${SKILL_NAME}/scripts/render.py` via stdin (heredoc), capture stdout, and write it to outputs/widget.html. Also write a brief assistant lead-in message to outputs/response.md.
 4. If NOT activating: do the task naturally and write your natural response to outputs/response.md. Do not produce widget HTML.
 
 TASK PROMPT:

@@ -17,16 +17,19 @@
     ></i>
     <h3 style="margin: 0">Decision navigator</h3>
   </div>
-  <p
-    id="topic-line"
-    style="margin: 0 0 1.25rem; color: var(--color-text-secondary); font-size: 14px"
-  ></p>
+  <p style="margin: 0 0 1.25rem; color: var(--color-text-secondary); font-size: 14px">
+    {{topic}}. Walk to a leaf, then commit and the brief sends back to chat.
+  </p>
 
   <div id="tree"></div>
 </div>
 
 <script id="navigator-data" type="application/json">
-  {{NAVIGATOR_DATA}}
+  {
+    "topic": {{{topic_json}}},
+    "submit_instruction": {{{submit_instruction_json}}},
+    "tree": {{{tree_json}}}
+  }
 </script>
 
 <script type="module" src="./widget.ts"></script>

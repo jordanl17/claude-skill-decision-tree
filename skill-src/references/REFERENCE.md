@@ -2,7 +2,7 @@
 
 ## Payload schema
 
-The runtime payload is a JSON object with three top-level keys: `topic`, `submit_instruction`, and `tree`. Claude `JSON.stringify`-s this object and substitutes the result into the single `{{NAVIGATOR_DATA}}` placeholder in the bundled widget. The `tree` is a recursive structure. Each level has a question, a basis line, and branches. Each branch has metadata and an optional `sub` pointing to the next level. Leaves have `next_hint: null` and `sub: null`.
+The runtime payload is a JSON object with three top-level keys: `topic`, `submit_instruction`, and `tree`. Claude pipes this object to `render.py` via stdin; render.py validates against the schema, auto-derives `<key>_json` variants for every top-level key, then chevron-renders the bundled widget. The `tree` is a recursive structure. Each level has a question, a basis line, and branches. Each branch has metadata and an optional `sub` pointing to the next level. Leaves have `next_hint: null` and `sub: null`.
 
 ```json
 {
@@ -107,9 +107,16 @@ The full tree at 3 L0 / 3 L1 / 2 L2 sizing is roughly 1500 to 2500 tokens of JSO
 
 ## Widget substitution
 
-The bundled widget HTML at `assets/widget-bundled.html` contains a single placeholder, `{{NAVIGATOR_DATA}}`, inside an inline `<script id="navigator-data" type="application/json">` tag. Claude reads the bundled file, replaces the placeholder with the JSON-stringified payload `{ topic, submit_instruction, tree }`, and passes the result to `visualize:show_widget`.
+The bundled widget HTML uses chevron (Mustache) placeholders, filled at runtime by `render.py`:
 
-`widget.ts` reads `document.getElementById('navigator-data').textContent` and `JSON.parse`s it. The header line in the rendered widget is set from the `topic` field at runtime - no separate HTML interpolation needed.
+- `{{topic}}` - the topic as escaped HTML text (shown in the widget heading).
+- `{{{topic_json}}}` - the topic as a JSON-encoded JS string, used in the inline navigator-data JSON.
+- `{{{submit_instruction_json}}}` - the submit instruction as a JSON-encoded JS string.
+- `{{{tree_json}}}` - the tree as a JSON-encoded object, embedded directly in the inline navigator-data JSON.
+
+`render.py` automatically derives a `<key>_json` variant of every top-level payload key, so authors construct the user-facing payload `{ topic, submit_instruction, tree }` and the JS-context variants are generated for free. Triple-mustache (`{{{ }}}`) emits the value unescaped (the right behaviour for JSON / JS-context substitution); double-mustache (`{{ }}`) HTML-escapes the value for safe text rendering.
+
+`widget.ts` then reads `document.getElementById('navigator-data').textContent` and `JSON.parse`s it to get the structured payload back.
 
 ## Edge cases
 
