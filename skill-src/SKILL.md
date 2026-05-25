@@ -26,6 +26,8 @@ Before rendering, run this check **as silent internal reasoning** - do NOT write
 3. Compare the L1 questions.
 4. **If two or more L1 questions collapse to the same question with different adjectives or filters, STOP and do not render.** Offer a flat list response and say briefly why a tree doesn't fit.
 
+**Sharper test for the borderline trap:** if the L0 branches are named things (Bali / Thailand / Vietnam; witty / professional / playful; Rust / Go / Python), the L1 questions are often "what should I do in X?" or "give me 5 examples in X" - same question, different filter. Those are skip cases even when 3 named L0 candidates exist. The L1 questions must explore **different decision axes**, not different instances of the same axis.
+
 When the check passes, go straight to the widget. **Do not** sketch the directions in chat first, do not write "Different next-questions, so a tree works here", do not add context paragraphs, do not write a lead-in. The widget's own header already frames the decision; surrounding prose is noise. Reserve commentary for the final artifact once the user commits a leaf.
 
 ## Generate the tree
@@ -34,25 +36,42 @@ Construct a JSON payload matching this schema:
 
 {{SCHEMA}}
 
-Sizing: 2-4 branches at each level, 3 levels deep. Pick the count that fits the decision - a clean binary at L0 (2 branches) is fine if each branch genuinely leads to a different L1 question; 4 is the ceiling. Same flex at L1 and L2.
+**Sizing (HARD RULES):**
 
-L2 leaves must be concrete and committable. Not "a tool that helps with X" but specific enough to act on. For ideation, name the tool and sketch the MVP. For architecture, name the pattern and sketch its trade.
+- **Exactly 3 levels deep: L0 → L1 → L2.** Not 2, not 4. L2 nodes are terminal leaves.
+- **Every L0 branch MUST have a non-null `sub`** with 2-4 L1 children. No L0 may be a leaf.
+- **Every L1 branch MUST have a non-null `sub`** with 2-4 L2 children. No L1 may be a leaf.
+- **L2 leaves MUST have `sub: null` and `next_hint: null`.** L2 is where the walk ends.
+- 2-4 branches per level. Same flex at every level.
+- **No ragged trees.** Every path from root to leaf must traverse exactly L0 → L1 → L2. If you find yourself wanting to make some L1s terminal and others have children, the tree shape is wrong for the topic.
+
+**L2 leaf quality (HARD RULES):**
+
+- Every L2 leaf summary must name a **specific** tool, pattern, place, or product. Not "a managed service", not "an appropriate database", not "your choice of provider". Examples of good L2 leaves: "Clerk hosted auth", "ClickHouse Cloud", "Margate, Kent", "Auth0 + WorkOS for SSO".
+- **Forbidden vague phrases anywhere in L2 summaries:** "your choice", "appropriate", "depending on what you", "whichever makes sense", "as needed", "to be determined", "something that fits", "pick whichever". If any of these appear, rewrite the leaf as a specific named entity.
+- For ideation: name the tool and sketch the MVP. For architecture: name the pattern and sketch its trade. For trip planning: name the place and the headline activity.
 
 See [references/REFERENCE.md](references/REFERENCE.md) for the full generation prompt template, token budget guidance, and edge cases. See [references/EXAMPLES.md](references/EXAMPLES.md) for fit and no-fit cases.
 
 ## Rendering
 
-Read `assets/widget-bundled.html`. It is a single-file widget with styles and JS already inlined.
+Pipe the JSON payload through `render.py` via **stdin** (heredoc) - never via a temp file, never via shell `argv`:
 
-Replace the single placeholder `{{NAVIGATOR_DATA}}` (inside `<script id="navigator-data" type="application/json">`) with your JSON payload, produced by `JSON.stringify`-ing the object you built in the previous step. The substituted content must be valid JSON.
+```
+python3 ${CLAUDE_SKILL_DIR}/scripts/render.py <<'EOF'
+{"topic": "...", "submit_instruction": "...", "tree": {...}}
+EOF
+```
 
-Pass the filled HTML string to `visualize:show_widget` as `widget_code`.
+`render.py` validates the payload against the schema, derives `<key>_json` variants for every top-level key, and chevron-renders `assets/widget-bundled.html`. Capture stdout. **Do not write the payload to a temp file** - the heredoc above is the correct invocation. Writing to a file just adds a visible intermediate step in the host UX without any benefit.
+
+Pass the script's stdout to `visualize:show_widget` as `widget_code`.
 
 Call shape for `visualize:show_widget`:
 
 - `title`: `decision_tree_{topic-slug}` (kebab-case)
 - `loading_messages`: 3-4 short messages
-- `widget_code`: the filled HTML string
+- `widget_code`: the stdout from render.py
 
 **Zero prose before the widget.** No lead-in, no variance sketch, no framing line, no "Rendering..." marker. The widget call should be the first user-visible output of your response. The widget's own header is the framing.
 
@@ -82,3 +101,5 @@ The widget is a precision tool, not a default for any branching question.
 
 - [references/EXAMPLES.md](references/EXAMPLES.md) - fit and no-fit scenarios with reasoning
 - [references/REFERENCE.md](references/REFERENCE.md) - JSON schema, generation prompt template, edge cases
+- [references/mustache-syntax.md](references/mustache-syntax.md) - chevron Mustache subset for extending the widget template
+- [references/schema-authoring.md](references/schema-authoring.md) - JSON Schema constructs render.py's validator supports

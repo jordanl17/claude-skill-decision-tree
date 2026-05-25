@@ -7,10 +7,10 @@
  * from the test's document.defaultView - sendPrompt calls are routed
  * through `document` (the shared object) so the spy can observe them.
  *
- * Slot filling mirrors the production substitution: replace the single
- * `{{NAVIGATOR_DATA}}` placeholder in the bundled HTML with the
- * JSON-stringified payload. This is the same one-liner Claude does at
- * runtime.
+ * Slot filling is delegated to the real `render.py` pipeline (spawned via
+ * python3 with the payload piped through stdin) so these tests exercise
+ * the production substitution path end-to-end rather than an inline JS
+ * substitute.
  *
  * Each interaction loads a fresh widget instance (because the widget
  * script holds module-scoped state that we cannot reset without
@@ -20,12 +20,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as {
   name: string;
 };
 const skillName = packageJson.name.replace(/^claude-skill-/, '');
-const bundlePath = resolve(__dirname, '../../skill', skillName, 'assets/widget-bundled.html');
+const renderPath = resolve(__dirname, '../../skill', skillName, 'scripts/render.py');
 
 interface Branch {
   id: string;
@@ -124,20 +125,24 @@ const buildFixturePayload = (): Payload => ({
   },
 });
 
-// Production-equivalent slot fill: read the bundle, substitute the single
-// `{{NAVIGATOR_DATA}}` placeholder with the JSON-stringified payload.
-// This is the same one-liner Claude does at runtime.
-const bundleRaw = readFileSync(bundlePath, 'utf8');
-const filledBundle = bundleRaw.replace(
-  '{{NAVIGATOR_DATA}}',
-  JSON.stringify(buildFixturePayload(), null, 2),
-);
+// Production-equivalent slot fill: pipe the JSON payload through render.py
+// via stdin and capture stdout. Same code path Claude uses at runtime.
+const renderResult = spawnSync('python3', [renderPath], {
+  input: JSON.stringify(buildFixturePayload()),
+  encoding: 'utf8',
+});
+if (renderResult.status !== 0) {
+  throw new Error(
+    `render.py exited with status ${renderResult.status}. Run \`pnpm build\` first.\nstderr: ${renderResult.stderr}`,
+  );
+}
+const filledBundle = renderResult.stdout;
 
 const scriptMatches = Array.from(
   filledBundle.matchAll(/<script\s+type="module">([\s\S]*?)<\/script>/g),
 );
 if (scriptMatches.length === 0) {
-  throw new Error('Bundle has no <script type="module"> - run `pnpm build` first');
+  throw new Error('Rendered bundle has no <script type="module"> - run `pnpm build` first');
 }
 const scriptBody = scriptMatches[scriptMatches.length - 1]?.[1] ?? '';
 

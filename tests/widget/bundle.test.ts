@@ -36,22 +36,35 @@ describe('bundle integrity', () => {
     });
   });
 
-  describe('runtime slot token preserved (filled by Claude at render time)', () => {
-    // Single slot: Claude substitutes its JSON-stringified payload for
-    // {{NAVIGATOR_DATA}} inside the inline <script id="navigator-data">
-    // tag. widget.ts then JSON.parses the script's textContent.
-    it('{{NAVIGATOR_DATA}} is present in the bundled HTML', () => {
-      expect(bundle).toContain('{{NAVIGATOR_DATA}}');
+  describe('runtime slot tokens preserved (filled by render.py at skill runtime)', () => {
+    // {{topic}} is an HTML-text interpolation (chevron HTML-escapes it).
+    // The *_json tokens are triple-stache (raw) and embed JSON literals
+    // in the inline <script id="navigator-data"> payload that widget.ts
+    // parses. render.py auto-derives the *_json variants from each
+    // top-level payload key.
+    const doubleStacheTokens: readonly string[] = ['topic'];
+    const tripleStacheTokens: readonly string[] = [
+      'topic_json',
+      'submit_instruction_json',
+      'tree_json',
+    ];
+
+    doubleStacheTokens.forEach((token) => {
+      it(`{{${token}}} is present in the bundled HTML`, () => {
+        expect(bundle).toContain(`{{${token}}}`);
+      });
+    });
+
+    tripleStacheTokens.forEach((token) => {
+      it(`{{{${token}}}} is present in the bundled HTML`, () => {
+        expect(bundle).toContain(`{{{${token}}}}`);
+      });
     });
 
     it('inline navigator-data <script type="application/json"> tag is present', () => {
+      // widget.ts parses JSON from this element's textContent. Lose
+      // the tag and the runtime throws on JSON.parse.
       expect(bundle).toMatch(/<script\s+id="navigator-data"\s+type="application\/json">/);
-    });
-
-    it('NAVIGATOR_DATA slot lives inside the navigator-data script tag', () => {
-      expect(bundle).toMatch(
-        /<script\s+id="navigator-data"\s+type="application\/json">\s*\{\{NAVIGATOR_DATA\}\}\s*<\/script>/,
-      );
     });
   });
 

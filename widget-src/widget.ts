@@ -1,10 +1,14 @@
 /*
  * Decision tree navigator widget.
  *
- * The tree, topic, and submit instruction are baked in at render time by
- * substituting the single `{{NAVIGATOR_DATA}}` placeholder inside the
- * inline JSON script tag in widget.html. This file reads that data with
- * JSON.parse, keeping the TS source free of template placeholders.
+ * The tree, topic, and submit instruction are baked in at render time via
+ * chevron (Mustache) substitution in render.py. The placeholders
+ * {{{topic_json}}}, {{{submit_instruction_json}}}, and {{{tree_json}}}
+ * live inside the inline navigator-data JSON script tag in widget.html;
+ * widget.ts reads that script's textContent and JSON.parses it.
+ *
+ * render.py auto-derives the *_json variants from each top-level payload
+ * key so authors only construct { topic, submit_instruction, tree }.
  *
  * Inline onclick handlers in the rendered HTML reach functions through
  * window.* assignments at the end of main(). Function-scope names would
@@ -59,9 +63,6 @@ const main = (): void => {
     submit_instruction: SUBMIT_INSTRUCTION,
     tree,
   } = JSON.parse(dataScript.textContent || '{}') as NavigatorData;
-
-  const topicLine = requireElement<HTMLElement>('#topic-line');
-  topicLine.textContent = `${TOPIC}. Walk to a leaf, then commit and the brief sends back to chat.`;
 
   const treeContainer = requireElement<HTMLElement>('#tree');
 
@@ -156,10 +157,15 @@ const main = (): void => {
     const hint = branch.next_hint
       ? `<div class="bp"><i class="ti ti-arrow-down-right" style="font-size: 12px;" aria-hidden="true"></i> next: ${branch.next_hint}</div>`
       : '';
-    const addNoteButton =
-      !note && !editing && !state.committed
-        ? `<button class="nb" onclick="event.stopPropagation(); toggleNote('${branch.id}')"><i class="ti ti-plus" style="font-size: 11px;" aria-hidden="true"></i> add note</button>`
-        : '';
+    // Once a pick is made at this level, hide "add note" on the other
+    // branches - annotation is only meaningful on the branch the user
+    // committed to walking down. Before any pick, all branches show
+    // "add note" so the user can mark a constraint they want considered
+    // before choosing.
+    const canAddNote = !note && !editing && !state.committed && (!someoneActive || isActive);
+    const addNoteButton = canAddNote
+      ? `<button class="nb" onclick="event.stopPropagation(); toggleNote('${branch.id}')"><i class="ti ti-plus" style="font-size: 11px;" aria-hidden="true"></i> add note</button>`
+      : '';
     return `
     <div class="${classes.join(' ')}" onclick="if(event.target.closest('.nb,.ni,.bn'))return; selectBranch(${level}, '${branch.id}')">
       <div class="bt">${branch.title}</div>

@@ -1,4 +1,4 @@
-import { cpSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
@@ -81,6 +81,13 @@ function assembleSkill(): Plugin {
       const schemaTargetPath = join(skillDir, 'assets', 'schema.json');
       writeFileSync(schemaTargetPath, schemaRaw, 'utf8');
 
+      const scriptsSource = join(skillSrcDir, 'scripts');
+      const scriptsTarget = join(skillDir, 'scripts');
+      cpSync(scriptsSource, scriptsTarget, { recursive: true });
+
+      const renderScript = join(scriptsTarget, 'render.py');
+      chmodSync(renderScript, 0o755);
+
       const referencesSource = join(skillSrcDir, 'references');
       const referencesTarget = join(skillDir, 'references');
       cpSync(referencesSource, referencesTarget, { recursive: true });
@@ -90,7 +97,7 @@ function assembleSkill(): Plugin {
       writeFileSync(licenseTarget, readFileSync(licenseSource, 'utf8'), 'utf8');
 
       this.info(
-        `assemble-skill: wrote ${skillMdTarget}, ${schemaTargetPath}, ${referencesTarget}/, ${licenseTarget}`,
+        `assemble-skill: wrote ${skillMdTarget}, ${schemaTargetPath}, ${scriptsTarget}/, ${referencesTarget}/, ${licenseTarget}`,
       );
     },
   };
