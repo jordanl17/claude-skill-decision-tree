@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.4.0...v0.5.0) (2026-05-25)
+
+
+### Features
+
+* add demo walkthrough and refresh README structure ([dad12ec](https://github.com/jordanl17/claude-skill-decision-tree/commit/dad12ec6939e26c5a48a7206b0e4d8d9817b7450))
+* add demo walkthrough and refresh README structure ([5202567](https://github.com/jordanl17/claude-skill-decision-tree/commit/52025670e6aa1f967dbdccf435dc11f54ae480b2))
+
 ## [0.4.0](https://github.com/jordanl17/claude-skill-decision-tree/compare/v0.3.0...v0.4.0) (2026-05-25)
 
 
