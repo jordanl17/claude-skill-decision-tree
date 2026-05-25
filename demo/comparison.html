@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>decision-tree - before/after comparison</title>
+    <style>
+      :root {
+        --main-bg: #f8f7f5;
+        --main-bg-elevated: #efeeec;
+        --surface: #ffffff;
+        --text-primary: #1a1816;
+        --text-secondary: #5a5450;
+        --text-tertiary: #8a8278;
+        --text-quaternary: #b3ada3;
+        --border-tertiary: rgba(26, 24, 22, 0.06);
+        --border-secondary: rgba(26, 24, 22, 0.12);
+        --danger-bg: rgba(180, 70, 60, 0.1);
+        --danger-text: #a64633;
+        --danger-border: rgba(180, 70, 60, 0.25);
+        --send-btn-bg: #c75e3c;
+        --branch-active-border: #534ab7;
+        --branch-active-bg: #eeedfe;
+        --branch-active-text: #26215c;
+        --branch-committed-border: #3b6d11;
+        --branch-committed-bg: #eaf3de;
+        --branch-committed-text: #173404;
+        --font-serif: 'Charter', 'Iowan Old Style', 'Source Serif Pro', 'Georgia', serif;
+        --font-sans:
+          -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Inter', system-ui, sans-serif;
+        --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-sans);
+        color: var(--text-primary);
+        background: #e9e6e0;
+        min-height: 100vh;
+      }
+      .page {
+        padding: 32px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+      .column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 4px;
+      }
+      .column-header h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-primary);
+      }
+      .column-header .tag {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .column-header .tag.bad {
+        background: var(--danger-bg);
+        color: var(--danger-text);
+      }
+      .column-header .tag.good {
+        background: rgba(90, 130, 60, 0.12);
+        color: #5a7c30;
+      }
+      .column-header .subtitle {
+        font-size: 13px;
+        color: var(--text-tertiary);
+        margin: 2px 0 0;
+      }
+
+      .claude-frame {
+        background: var(--main-bg);
+        border: 0.5px solid var(--border-secondary);
+        border-radius: 14px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 760px;
+        box-shadow: 0 4px 24px rgba(31, 29, 26, 0.06);
+      }
+
+      .title-bar {
+        padding: 12px 20px;
+        font-size: 13px;
+        color: var(--text-primary);
+        height: 44px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        border-bottom: 0.5px solid var(--border-tertiary);
+      }
+      .title-bar .chevron {
+        width: 12px;
+        height: 12px;
+        color: var(--text-tertiary);
+      }
+
+      .chat-area {
+        flex: 1;
+        overflow: hidden;
+        padding: 18px 28px 8px;
+      }
+      .chat-inner {
+        max-width: 100%;
+      }
+
+      .user-message {
+        font-family: var(--font-serif);
+        font-size: 15px;
+        line-height: 1.55;
+        color: var(--text-primary);
+        background: var(--main-bg-elevated);
+        border-radius: 14px;
+        padding: 10px 16px;
+        margin: 0 0 16px auto;
+        max-width: 90%;
+        width: fit-content;
+      }
+      .assistant-line {
+        font-family: var(--font-serif);
+        font-size: 15px;
+        line-height: 1.55;
+        color: var(--text-primary);
+        margin: 0 0 12px;
+      }
+      .assistant-list {
+        margin: 0 0 16px;
+        padding-left: 18px;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--text-primary);
+      }
+      .assistant-list li {
+        margin-bottom: 6px;
+      }
+      .question {
+        font-style: italic;
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin: 0 0 16px;
+      }
+
+      .scroll-fade {
+        position: relative;
+        max-height: 580px;
+        overflow: hidden;
+      }
+      .scroll-fade::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: linear-gradient(to bottom, rgba(248, 247, 245, 0), var(--main-bg));
+        pointer-events: none;
+      }
+
+      /* Decision tree widget styling */
+      .nav {
+        padding: 4px 0;
+        font-family: var(--font-sans);
+      }
+      .nav-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .nav-header .icon {
+        width: 18px;
+        height: 18px;
+        color: var(--text-secondary);
+      }
+      .nav-header h3 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 500;
+      }
+      .nav-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin: 0 0 14px;
+      }
+
+      .lv {
+        margin-bottom: 12px;
+      }
+      .lv.indent {
+        border-left: 2px solid var(--branch-active-border);
+        padding-left: 12px;
+        margin-left: 4px;
+      }
+      .lm {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-bottom: 4px;
+        letter-spacing: 0.4px;
+        font-weight: 500;
+        font-family: var(--font-mono);
+      }
+      .lq {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0 0 2px;
+      }
+      .lbasis {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-bottom: 10px;
+        font-style: italic;
+      }
+      .bg {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .b {
+        background: var(--surface);
+        border: 0.5px solid var(--border-tertiary);
+        border-radius: 10px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .b.active {
+        border-color: var(--branch-active-border);
+        background: var(--branch-active-bg);
+      }
+      .b.committed {
+        border-color: var(--branch-committed-border);
+        background: var(--branch-committed-bg);
+      }
+      .b.dim {
+        opacity: 0.45;
+      }
+      .bt {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+      .b.active .bt {
+        color: var(--branch-active-text);
+      }
+      .b.committed .bt {
+        color: var(--branch-committed-text);
+      }
+      .bs {
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+      .bn {
+        font-size: 11px;
+        color: var(--branch-active-border);
+        background: var(--branch-active-bg);
+        padding: 4px 6px;
+        border-radius: 5px;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .b.committed .bn {
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--branch-committed-text);
+      }
+      .bp {
+        font-size: 10.5px;
+        color: var(--text-tertiary);
+        border-top: 0.5px dashed var(--border-tertiary);
+        padding-top: 6px;
+        margin-top: auto;
+        font-style: italic;
+      }
+
+      .cr {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        padding: 10px 12px;
+        background: var(--branch-committed-bg);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--branch-committed-text);
+        font-weight: 500;
+      }
+      .cr .check {
+        width: 16px;
+        height: 16px;
+        color: var(--branch-committed-border);
+      }
+
+      /* Input bar */
+      .input-bar {
+        padding: 0 24px 16px;
+        flex-shrink: 0;
+      }
+      .input-bar-inner {
+        background: var(--surface);
+        border: 0.5px solid var(--border-tertiary);
+        border-radius: 18px;
+        padding: 12px 16px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 80px;
+        box-shadow: 0 1px 3px rgba(31, 29, 26, 0.04);
+      }
+      .input-text {
+        color: var(--text-quaternary);
+        font-size: 14px;
+      }
+      .input-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+      .input-actions .right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .send-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--send-btn-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+      .send-btn svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      .annotation {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        padding: 0 4px;
+      }
+      .annotation strong {
+        color: var(--text-primary);
+      }
+
+      .footer {
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-top: 32px;
+        padding: 0 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="grid">
+        <!-- BEFORE -->
+        <div class="column">
+          <div class="column-header">
+            <div>
+              <h2>Before</h2>
+              <div class="subtitle">Linear chat. Branches scroll off-screen as you walk.</div>
+            </div>
+            <span class="tag bad">Without skill</span>
+          </div>
+
+          <div class="claude-frame">
+            <div class="title-bar">
+              Auth strategy for a weekend side project
+              <svg class="chevron" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M3 4.5l3 3 3-3"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+
+            <div class="chat-area">
+              <div class="scroll-fade">
+                <div class="chat-inner">
+                  <div class="user-message">
+                    I'm starting a side project this weekend. Help me think through what auth to
+                    use.
+                  </div>
+
+                  <div class="assistant-line">
+                    Depends on what you're optimising for. The big trade-off is speed-to-ship vs.
+                    long-term flexibility vs. team readiness:
+                  </div>
+                  <ul class="assistant-list">
+                    <li>Off-the-shelf provider - fastest, vendor lock-in.</li>
+                    <li>Own session model - more work, swap providers later.</li>
+                    <li>Org/role-aware from day one - heavier, ready for contributors.</li>
+                  </ul>
+                  <div class="question">Which one matters most for this project?</div>
+
+                  <div class="user-message">Ship fast. It's a weekend thing.</div>
+
+                  <div class="assistant-line">
+                    Got it. For a managed provider, three popular choices:
+                  </div>
+                  <ul class="assistant-list">
+                    <li>Clerk - React drop-ins, social + email handled.</li>
+                    <li>Supabase Auth - bundled with Supabase, one less vendor.</li>
+                    <li>Auth0 - mature, heavier setup.</li>
+                  </ul>
+                  <div class="question">Which one fits your stack best?</div>
+
+                  <div class="user-message">Let's go with Clerk.</div>
+
+                  <div class="assistant-line">
+                    With Clerk, you can pick your sign-in surface area:
+                  </div>
+                  <ul class="assistant-list">
+                    <li>Email + password.</li>
+                    <li>Social sign-in only (Google / GitHub buttons).</li>
+                    <li>Magic link (passwordless email).</li>
+                  </ul>
+                  <div class="question">Any preference?</div>
+
+                  <div class="user-message">
+                    Wait, what were the other two options at the first step again? And what was the
+                    Supabase one about?
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="input-bar">
+              <div class="input-bar-inner">
+                <div class="input-text">Write a message...</div>
+                <div class="input-actions">
+                  <span>+</span>
+                  <div class="right">
+                    <span>Opus 4.7 | Adaptive</span>
+                    <div class="send-btn">
+                      <svg viewBox="0 0 16 16" fill="none">
+                        <path
+                          d="M8 13V3M4 7l4-4 4 4"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="annotation">
+            <strong>The problem:</strong> each level overwrites the last. To compare siblings you
+            re-scroll. To recall what you ruled out, you re-prompt. The final artifact has no record
+            of the abandoned branches - just the ones that survived.
+          </p>
+        </div>
+
+        <!-- AFTER -->
+        <div class="column">
+          <div class="column-header">
+            <div>
+              <h2>After</h2>
+              <div class="subtitle">Whole tree in view. Tap to walk, annotate, commit.</div>
+            </div>
+            <span class="tag good">With skill</span>
+          </div>
+
+          <div class="claude-frame">
+            <div class="title-bar">
+              Auth strategy for a weekend side project
+              <svg class="chevron" viewBox="0 0 12 12" fill="none">
+                <path
+                  d="M3 4.5l3 3 3-3"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+
+            <div class="chat-area">
+              <div class="chat-inner">
+                <div class="user-message" style="margin-bottom: 14px">
+                  I'm starting a side project this weekend. Help me think through what auth to use.
+                </div>
+
+                <div class="nav">
+                  <div class="nav-header">
+                    <span class="icon">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <circle cx="6" cy="6" r="2" />
+                        <circle cx="6" cy="18" r="2" />
+                        <circle cx="18" cy="6" r="2" />
+                        <path d="M6 8v8M18 8c0 6-12 4-12 10" />
+                      </svg>
+                    </span>
+                    <h3>Decision navigator</h3>
+                  </div>
+                  <p class="nav-sub">
+                    authentication strategy. Walk to a leaf, then commit and the brief sends back to
+                    chat.
+                  </p>
+
+                  <div class="lv">
+                    <div class="lm">DECISION 1 OF 3</div>
+                    <h4 class="lq">What matters most for this auth setup?</h4>
+                    <p class="lbasis">The trade you make here drives every downstream choice.</p>
+                    <div class="bg">
+                      <div class="b active">
+                        <div class="bt">Ship the MVP this week</div>
+                        <div class="bs">
+                          Off-the-shelf provider, sensible defaults, zero infra to babysit.
+                        </div>
+                        <div class="bp">next: which managed provider fits the stack</div>
+                      </div>
+                      <div class="b dim">
+                        <div class="bt">Max flexibility long-term</div>
+                        <div class="bs">
+                          Own the session model so you can swap providers or self-host later.
+                        </div>
+                        <div class="bp">next: core trust model</div>
+                      </div>
+                      <div class="b dim">
+                        <div class="bt">Ready for contributors</div>
+                        <div class="bs">
+                          Built for an eventual team - roles, audit trails, org boundaries.
+                        </div>
+                        <div class="bp">next: org boundary shape</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="lv indent">
+                    <div class="lm">DECISION 2 OF 3</div>
+                    <h4 class="lq">Which managed provider fits the stack?</h4>
+                    <p class="lbasis">
+                      You're shipping this week - pick on integration speed, not feature ceiling.
+                    </p>
+                    <div class="bg">
+                      <div class="b active">
+                        <div class="bt">Clerk hosted auth</div>
+                        <div class="bs">
+                          Drop-in React components, generous free tier, social + email handled.
+                        </div>
+                        <div class="bp">next: sign-in surface area</div>
+                      </div>
+                      <div class="b dim">
+                        <div class="bt">Supabase Auth</div>
+                        <div class="bs">
+                          Bundled with the rest of your Supabase project - one less vendor.
+                        </div>
+                        <div class="bp">next: sign-in surface area</div>
+                      </div>
+                      <div class="b dim">
+                        <div class="bt">Auth0 free tier</div>
+                        <div class="bs">Mature, enterprise-ready, but heavier setup.</div>
+                        <div class="bp">next: sign-in surface area</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="lv indent">
+                    <div class="lm">DECISION 3 OF 3 (FINAL)</div>
+                    <h4 class="lq">Which sign-in surface do you want?</h4>
+                    <p class="lbasis">
+                      Each option costs the same to implement with Clerk - choice is mostly UX.
+                    </p>
+                    <div class="bg">
+                      <div class="b dim">
+                        <div class="bt">Email + password</div>
+                        <div class="bs">
+                          Clerk handles reset flows and breach checks out of the box.
+                        </div>
+                      </div>
+                      <div class="b committed">
+                        <div class="bt">Social sign-in only</div>
+                        <div class="bs">
+                          GitHub + Google buttons via Clerk. Zero password UX to design.
+                        </div>
+                        <div class="bn">
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M3 3h7l3 3v7H3z" />
+                          </svg>
+                          only need GitHub for now
+                        </div>
+                      </div>
+                      <div class="b dim">
+                        <div class="bt">Magic link</div>
+                        <div class="bs">
+                          Passwordless email link. Lowest friction for a side project.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="cr">
+                      <svg
+                        class="check"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M3 8.5l3 3 7-7" />
+                      </svg>
+                      Sent to chat
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="input-bar">
+              <div class="input-bar-inner">
+                <div class="input-text">Write a message...</div>
+                <div class="input-actions">
+                  <span>+</span>
+                  <div class="right">
+                    <span>Opus 4.7 | Adaptive</span>
+                    <div class="send-btn">
+                      <svg viewBox="0 0 16 16" fill="none">
+                        <path
+                          d="M8 13V3M4 7l4-4 4 4"
+                          stroke="currentColor"
+                          stroke-width="1.6"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="annotation">
+            <strong>The fix:</strong> the whole shape renders in one turn. You walk the tree, drop a
+            note on the branch you committed to, and abandoned siblings come back as "also explored"
+            context so the final artifact reflects what you chose against, not just what you chose.
+          </p>
+        </div>
+      </div>
+
+      <p class="footer">decision-tree - bounded branching decisions for Claude</p>
+    </div>
+  </body>
+</html>

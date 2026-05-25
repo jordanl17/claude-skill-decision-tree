@@ -6,23 +6,23 @@
 ![updated](https://img.shields.io/github/release-date/jordanl17/claude-skill-decision-tree?label=updated&color=blue)
 ![license](https://img.shields.io/github/license/jordanl17/claude-skill-decision-tree?color=blue)
 
-Walk a branching decision by tapping through an interactive tree, then hand the committed path back to Claude to write the artifact - an ADR, an idea brief, an itinerary, whatever the decision was for. Claude generates the full tree in one turn, so each tap reveals the next level instantly.
+Walk a branching decision by tapping through an interactive tree instead of re-prompting Claude with _"wait, what was option 2 again?"_ every time you want to compare siblings. Tap a branch, drop a note on it, commit a leaf - Claude turns the committed path (plus the branches you ruled out) into an ADR, idea brief, itinerary, whatever the decision called for.
 
 > [!NOTE]
 > The widget renders in claude.ai (web) and Claude Desktop. Claude Code, `claude -p`, and the Anthropic API cannot invoke `visualize:show_widget`, so the skill no-ops there.
 
 ## In action
 
-<!-- TODO: add demo GIF at demo/decision-tree.gif (300-500KB, ~800px wide) -->
+Three levels deep. One commit button. No re-scrolling to remember what you ruled out.
+
 <p align="center">
-  <img src="demo/decision-tree.gif" width="800" alt="Walking a decision tree and committing a leaf to produce an artifact" />
+  <img src="demo/decision-tree.gif" alt="Demo: typing a prompt, Claude renders the decision navigator, user walks three levels, drops a note on the chosen leaf, and commits the path back to chat." width="800">
 </p>
 
 ## Why this exists
 
-<!-- TODO: add comparison image at demo/comparison.png (prose Q&A vs widget walkthrough) -->
 <p align="center">
-  <img src="demo/comparison.png" width="800" alt="Prose back-and-forth on the left, decision tree widget on the right" />
+  <img src="demo/comparison.png" alt="Side-by-side comparison. Left: a linear chat where each new level pushes the previous options off-screen. Right: the decision-tree widget with all three levels visible at once, one branch active per level and a note attached to the committed leaf." width="900">
 </p>
 
 Walking a strategic decision through chat means re-reading the same options five times, scrolling to compare branches, and losing your place when Claude reframes the question. _"Wait, which option were we on?"_
@@ -31,9 +31,13 @@ The decision-tree skill renders the whole shape at once. You see all top-level d
 
 ## When it activates
 
-The skill checks three conditions before rendering. All three must hold.
+The skill triggers on branching decisions where each top-level option leads somewhere genuinely different, not the same question with a filter swapped in. Three conditions hold before it renders.
 
-**Decision variance.** Each top-level branch must lead to a genuinely different next-question, not the same question with different filters. Claude runs the variance check internally before rendering. If the level-1 questions collapse to "give me N options in that style", the tree is abandoned and Claude responds with a flat list instead.
+**Decision variance.** Each top-level branch must lead to a different next-question, not the same question repeated. Claude runs this check internally before rendering - if the level-1 questions collapse to "give me N options in that style", the tree is abandoned and a flat list response comes back instead.
+
+**Bounded structure.** 3 levels deep, 2-4 branches per level. Anything wider or deeper gets chunked or walked conversationally.
+
+**Sufficient context.** Either you've primed the conversation, or one clarifying turn can fill the gap. The skill does not render cold.
 
 Fits:
 
@@ -50,10 +54,6 @@ Does not fit:
 - _"I don't know what I want to build."_ - no bounded structure yet, needs elicitation first
 - _"I want to talk through this, not click buttons."_ - explicit request for conversation
 
-**Bounded structure.** 3 levels deep, 2-4 branches per level. Anything wider or deeper gets chunked or walked conversationally.
-
-**Sufficient context.** Either the user has primed the conversation, or one clarifying turn can fill the gap. The skill does not render cold.
-
 ## Install
 
 1. Download [`decision-tree.zip`](https://github.com/jordanl17/claude-skill-decision-tree/releases/latest/download/decision-tree.zip) from the latest release.
@@ -61,21 +61,24 @@ Does not fit:
 3. Click the **+** button, then **Create Skill** → **Upload a Skill**.
 4. Select the `decision-tree.zip` file you downloaded.
 
+The skill appears in your skills list once uploaded. Trigger it by asking for help with a branching decision (see [When it activates](#when-it-activates)).
+
 ### Build from source
 
-```bash
-pnpm install
-pnpm build:zip
-```
+If you want to install from a specific commit or modify the skill locally:
 
-The zip lands at `decision-tree.zip` in the repo root. Upload it the same way.
+1. Clone this repo.
+2. Run `pnpm install` then `pnpm build:zip`.
+3. The resulting `decision-tree.zip` lands at the repo root and uploads via claude.ai the same way.
+
+The archive contains a single `decision-tree/` folder at its root with `SKILL.md` and `assets/` inside.
 
 ## Limitations
 
 - **claude.ai and Claude Desktop only.** Claude Code, `claude -p` (headless CLI), and the Anthropic API cannot invoke `visualize:show_widget`, which the skill depends on to render.
-- **Tree shape is path-independent.** The full tree is generated upfront in one Claude turn, so annotations dropped mid-walk feed the final artifact but cannot reshape downstream branches.
+- **Tree is locked at render time.** The full tree generates upfront in one Claude turn, so notes dropped mid-walk feed the final artifact but cannot reshape downstream branches.
 - **Depth and breadth caps.** 3 levels deep, 4 branches per level. Larger decision spaces have to be chunked or walked conversationally.
-- **Variance gate.** Decisions where every L0 branch leads to the same L1 question are filtered out before rendering. Use a flat list response instead.
+- **Variance gate.** Decisions where every top-level branch leads to the same follow-up question are filtered out before rendering - you'll get a flat list response instead.
 
 ## License
 
