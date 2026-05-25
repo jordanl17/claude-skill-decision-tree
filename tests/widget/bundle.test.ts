@@ -36,20 +36,38 @@ describe('bundle integrity', () => {
     });
   });
 
-  describe('runtime slot tokens preserved (filled by Claude at render time)', () => {
-    const runtimeTokens: readonly string[] = ['title', 'prompt'];
+  describe('runtime slot token preserved (filled by Claude at render time)', () => {
+    // Single slot: Claude substitutes its JSON-stringified payload for
+    // {{NAVIGATOR_DATA}} inside the inline <script id="navigator-data">
+    // tag. widget.ts then JSON.parses the script's textContent.
+    it('{{NAVIGATOR_DATA}} is present in the bundled HTML', () => {
+      expect(bundle).toContain('{{NAVIGATOR_DATA}}');
+    });
 
-    runtimeTokens.forEach((token) => {
-      it(`{{${token}}} is present in the bundled HTML`, () => {
-        expect(bundle).toContain(`{{${token}}}`);
-      });
+    it('inline navigator-data <script type="application/json"> tag is present', () => {
+      expect(bundle).toMatch(/<script\s+id="navigator-data"\s+type="application\/json">/);
+    });
+
+    it('NAVIGATOR_DATA slot lives inside the navigator-data script tag', () => {
+      expect(bundle).toMatch(
+        /<script\s+id="navigator-data"\s+type="application\/json">\s*\{\{NAVIGATOR_DATA\}\}\s*<\/script>/,
+      );
     });
   });
 
   describe('critical string literals survive JS minification', () => {
     // Terser keeps string literals by default. A future config change
-    // could break this silently.
-    const literals: readonly string[] = ['sendPrompt', 'applyBtn', 'response-input'];
+    // could break this silently. sendPrompt is the host API the widget
+    // calls to submit the committed brief; the others are inline
+    // onclick handler names assigned onto window.* in widget.ts.
+    const literals: readonly string[] = [
+      'sendPrompt',
+      'selectBranch',
+      'toggleNote',
+      'saveNote',
+      'commitAndSubmit',
+      'navigator-data',
+    ];
 
     literals.forEach((literal) => {
       it(`"${literal}" appears in the bundled output`, () => {

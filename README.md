@@ -1,4 +1,4 @@
-# Decision tree (Claude skill)
+# decision-tree (Claude skill)
 
 ![Claude skill](https://img.shields.io/badge/Claude-skill-c25f3c)
 ![release](https://img.shields.io/github/v/release/jordanl17/claude-skill-decision-tree?label=release&color=blue)
@@ -6,49 +6,53 @@
 ![updated](https://img.shields.io/github/release-date/jordanl17/claude-skill-decision-tree?label=updated&color=blue)
 ![license](https://img.shields.io/github/license/jordanl17/claude-skill-decision-tree?color=blue)
 
-<!--
-PLACEHOLDER: README
+Walk a branching decision by tapping through an interactive tree, then hand the committed path back to Claude to write the artifact - an ADR, an idea brief, an itinerary, whatever the decision was for. Claude generates the full tree in one turn, so each tap reveals the next level instantly.
 
-This README is the front door for users who find the repo from a release page,
-the skill picker, or a search result. Answer these questions in order:
+> [!NOTE]
+> The widget renders in claude.ai (web) and Claude Desktop. Claude Code, `claude -p`, and the Anthropic API cannot invoke `visualize:show_widget`, so the skill no-ops there.
 
-1. WHAT does this skill do, in one paragraph?
-   Lead with the user benefit, not the mechanism. Picture someone seeing
-   only this paragraph - would they know whether the skill is relevant to
-   them?
+## In action
 
-2. WHY does it exist?
-   What friction does it remove? A side-by-side comparison image (prose-
-   only vs widget) lands well for visual skills.
-
-3. WHEN does it activate?
-   Phrase patterns and shape heuristics. Keep the description symmetric:
-   what fires it, what does NOT fire it.
-
-4. HOW do I install it?
-   - Download the zip from the latest release
-   - Open claude.ai/customize/skills, click +, upload the zip
-   - (optional) Build-from-source instructions
-
-Other sections to consider:
-- A demo GIF in a /demo folder
-- Limitations (where it works: claude.ai web, Claude Desktop; where it does
-  not: Claude Code, the API)
-- License
-
--->
-
-## What it does
-
-<!-- PLACEHOLDER: one-paragraph description of the user benefit -->
+<!-- TODO: add demo GIF at demo/decision-tree.gif (300-500KB, ~800px wide) -->
+<p align="center">
+  <img src="demo/decision-tree.gif" width="800" alt="Walking a decision tree and committing a leaf to produce an artifact" />
+</p>
 
 ## Why this exists
 
-<!-- PLACEHOLDER: the friction this removes, ideally with a comparison image -->
+<!-- TODO: add comparison image at demo/comparison.png (prose Q&A vs widget walkthrough) -->
+<p align="center">
+  <img src="demo/comparison.png" width="800" alt="Prose back-and-forth on the left, decision tree widget on the right" />
+</p>
+
+Walking a strategic decision through chat means re-reading the same options five times, scrolling to compare branches, and losing your place when Claude reframes the question. _"Wait, which option were we on?"_
+
+The decision-tree skill renders the whole shape at once. You see all top-level directions, drill into one, and back out to compare siblings without re-prompting. On commit, the committed path plus any branches you explored and abandoned go back to Claude as structured input - so the final artifact reflects what you actually chose against, not just what you chose.
 
 ## When it activates
 
-<!-- PLACEHOLDER: the trigger phrases and the does-not-activate cases -->
+The skill checks three conditions before rendering. All three must hold.
+
+**Decision variance.** Each top-level branch must lead to a genuinely different next-question, not the same question with different filters. Claude runs the variance check internally before rendering. If the level-1 questions collapse to "give me N options in that style", the tree is abandoned and Claude responds with a flat list instead.
+
+Fits:
+
+- _"Help me think through authentication for this side project."_
+- _"I want to build a weekend side project. Help me figure out what."_
+- _"How should we model variants in the document pair store?"_
+- _"Plan a weekend trip from London."_
+
+Does not fit:
+
+- _"Help me name this side project."_ - same question with different stylistic filters
+- _"Recommend a podcast about software engineering."_ - flat list, no branching
+- _"Walk me through architecting a real-time collaborative editor."_ - cascading dependencies need real-time adaptation
+- _"I don't know what I want to build."_ - no bounded structure yet, needs elicitation first
+- _"I want to talk through this, not click buttons."_ - explicit request for conversation
+
+**Bounded structure.** 3 levels deep, 2-4 branches per level. Anything wider or deeper gets chunked or walked conversationally.
+
+**Sufficient context.** Either the user has primed the conversation, or one clarifying turn can fill the gap. The skill does not render cold.
 
 ## Install
 
@@ -64,18 +68,14 @@ pnpm install
 pnpm build:zip
 ```
 
+The zip lands at `decision-tree.zip` in the repo root. Upload it the same way.
+
 ## Limitations
 
-<!--
-PLACEHOLDER: where the skill works and where it does not. Boilerplate that
-applies to most widget-based skills:
-
-- Not available in Claude Code or the API. The widget renders through
-  visualize:show_widget, which is exposed in claude.ai and Claude Desktop
-  but not in Claude Code or the Anthropic API.
-- Add skill-specific limits here (e.g., nesting depth, structural-edit
-  limits, content-type constraints).
--->
+- **claude.ai and Claude Desktop only.** Claude Code, `claude -p` (headless CLI), and the Anthropic API cannot invoke `visualize:show_widget`, which the skill depends on to render.
+- **Tree shape is path-independent.** The full tree is generated upfront in one Claude turn, so annotations dropped mid-walk feed the final artifact but cannot reshape downstream branches.
+- **Depth and breadth caps.** 3 levels deep, 4 branches per level. Larger decision spaces have to be chunked or walked conversationally.
+- **Variance gate.** Decisions where every L0 branch leads to the same L1 question are filtered out before rendering. Use a flat list response instead.
 
 ## License
 

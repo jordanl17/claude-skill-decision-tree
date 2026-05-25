@@ -1,6 +1,5 @@
 node_modules/
-targetable-feedback/assets/widget-bundled.html
-targetable-feedback-workspace/
+skill/
 dist/
 pnpm-lock.yaml
 CHANGELOG.md
