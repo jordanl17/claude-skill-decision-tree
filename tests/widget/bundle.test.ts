@@ -1,98 +1,26 @@
-/**
- * Static checks against the built widget bundle.
- *
- * Catches build-config regressions that only surface in production - e.g.
- * type="module" lost (script runs before DOM), terser mangling sendPrompt
- * (silent broken Apply), or accidental bloat (~80 output tokens per KB
- * of streaming).
- *
- * Extend:
- *   - Add {{TOKEN}} names to `runtimeTokens` as you introduce them.
- *   - Add identifiers to `literals` for any host APIs beyond sendPrompt.
- *   - Raise the size budget only with intent.
- */
-
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { createBundleTests } from '@visill/test';
+import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const packageJson = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as {
-  name: string;
-};
-const skillName = packageJson.name.replace(/^claude-skill-/, '');
-const bundlePath = resolve(__dirname, '../../skill', skillName, 'assets/widget-bundled.html');
-const bundle = readFileSync(bundlePath, 'utf8');
+const skillRoot = resolve(__dirname, '../../skill');
+const entries = readdirSync(skillRoot);
+const skillName = entries[0];
+if (skillName === undefined) {
+  throw new Error(`No built skill found under ${skillRoot}. Run pnpm build first.`);
+}
+const bundlePath = resolve(skillRoot, skillName, 'assets', 'widget-bundled.html');
 
-describe('bundle integrity', () => {
-  describe('script execution timing', () => {
-    it('the inlined <script> declares type="module" so it defers past DOM parsing', () => {
-      // Vite hoists the <script> near the top. Without type="module" it
-      // runs synchronously and module-top requireElement() calls fail.
-      expect(bundle).toMatch(/<script\s+type="module">/);
-    });
-
-    it('does NOT contain a bare <script> without attributes (legacy non-deferred pattern)', () => {
-      expect(bundle).not.toMatch(/<script>\s*(?:var|const|let|function|document)/);
-    });
-  });
-
-  describe('runtime slot tokens preserved (filled by render.py at skill runtime)', () => {
-    // {{topic}} is an HTML-text interpolation (chevron HTML-escapes it).
-    // The *_json tokens are triple-stache (raw) and embed JSON literals
-    // in the inline <script id="navigator-data"> payload that widget.ts
-    // parses. render.py auto-derives the *_json variants from each
-    // top-level payload key.
-    const doubleStacheTokens: readonly string[] = ['topic'];
-    const tripleStacheTokens: readonly string[] = [
-      'topic_json',
-      'submit_instruction_json',
-      'tree_json',
-    ];
-
-    doubleStacheTokens.forEach((token) => {
-      it(`{{${token}}} is present in the bundled HTML`, () => {
-        expect(bundle).toContain(`{{${token}}}`);
-      });
-    });
-
-    tripleStacheTokens.forEach((token) => {
-      it(`{{{${token}}}} is present in the bundled HTML`, () => {
-        expect(bundle).toContain(`{{{${token}}}}`);
-      });
-    });
-
-    it('inline navigator-data <script type="application/json"> tag is present', () => {
-      // widget.ts parses JSON from this element's textContent. Lose
-      // the tag and the runtime throws on JSON.parse.
-      expect(bundle).toMatch(/<script\s+id="navigator-data"\s+type="application\/json">/);
-    });
-  });
-
-  describe('critical string literals survive JS minification', () => {
-    // Terser keeps string literals by default. A future config change
-    // could break this silently. sendPrompt is the host API the widget
-    // calls to submit the committed brief; the others are inline
-    // onclick handler names assigned onto window.* in widget.ts.
-    const literals: readonly string[] = [
-      'sendPrompt',
-      'selectBranch',
-      'toggleNote',
-      'saveNote',
-      'commitAndSubmit',
-      'navigator-data',
-    ];
-
-    literals.forEach((literal) => {
-      it(`"${literal}" appears in the bundled output`, () => {
-        expect(bundle).toContain(literal);
-      });
-    });
-  });
-
-  describe('size budget', () => {
-    it('bundle stays under 16 KB (16,384 bytes)', () => {
-      // Hello-world: ~2.7 KB. Full widgets typically reach 10-15 KB.
-      expect(bundle.length).toBeLessThan(16_384);
-    });
-  });
+createBundleTests({
+  bundlePath,
+  dataScriptId: 'navigator-data',
+  doubleStacheTokens: ['topic'],
+  tripleStacheTokens: ['topic_json', 'submit_instruction_json', 'tree_json'],
+  literals: [
+    'sendPrompt',
+    'selectBranch',
+    'toggleNote',
+    'saveNote',
+    'commitAndSubmit',
+    'navigator-data',
+  ],
 });

@@ -1,9 +1,12 @@
 *.zip
 *-workspace/
 node_modules/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 dist/
 skill/
+parity-report.json
 .husky/_/
 __pycache__/
 *.pyc

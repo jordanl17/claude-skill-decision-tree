@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@visill/sdk': link:../visill/packages/visill
+  '@visill/build': link:../visill/packages/visill-build
+  '@visill/test': link:../visill/packages/visill-test
+
 importers:
 
   .:
@@ -14,6 +19,15 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.41
+      '@visill/build':
+        specifier: link:../visill/packages/visill-build
+        version: link:../visill/packages/visill-build
+      '@visill/sdk':
+        specifier: link:../visill/packages/visill
+        version: link:../visill/packages/visill
+      '@visill/test':
+        specifier: link:../visill/packages/visill-test
+        version: link:../visill/packages/visill-test
       husky:
         specifier: ^9.1.0
         version: 9.1.7
