@@ -27,9 +27,9 @@
   "devDependencies": {
     "@types/jsdom": "^21.1.0",
     "@types/node": "^20.0.0",
-    "@visill/build": "^0.1.0-rc.2",
-    "@visill/sdk": "^0.1.0-rc.2",
-    "@visill/test": "^0.1.0-rc.2",
+    "@visill/build": "rc",
+    "@visill/sdk": "rc",
+    "@visill/test": "rc",
     "husky": "^9.1.0",
     "jsdom": "^25.0.0",
     "lightningcss": "^1.32.0",
