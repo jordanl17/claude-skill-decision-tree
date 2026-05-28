@@ -14,13 +14,14 @@
  * window.* assignments at the end of main(). Function-scope names would
  * not otherwise be visible to inline handlers.
  *
- * main() runs after DOMContentLoaded so the inline navigator-data JSON
- * script is in the DOM regardless of where the bundler placed our module
- * script. Widget hosts that strip type="module" or run scripts eagerly
- * would otherwise race the data script.
+ * readyDOM defers main() until DOMContentLoaded so the inline
+ * navigator-data JSON script is in the DOM regardless of where the
+ * bundler placed our module script. Widget hosts that strip type="module"
+ * or run scripts eagerly would otherwise race the data script.
  */
 
 import type {} from './globals';
+import { readDataIsland, readyDOM, requireElement, sendPrompt } from '@visill/sdk';
 
 interface Branch {
   id: string;
@@ -50,19 +51,12 @@ interface NavigatorState {
   committed: boolean;
 }
 
-const requireElement = <ElementType extends Element>(selector: string): ElementType => {
-  const found = document.querySelector(selector);
-  if (!found) throw new Error(`Required element not found: ${selector}`);
-  return found as ElementType;
-};
-
 const main = (): void => {
-  const dataScript = requireElement<HTMLScriptElement>('#navigator-data');
   const {
     topic: TOPIC,
     submit_instruction: SUBMIT_INSTRUCTION,
     tree,
-  } = JSON.parse(dataScript.textContent || '{}') as NavigatorData;
+  } = readDataIsland<NavigatorData>('navigator-data');
 
   const treeContainer = requireElement<HTMLElement>('#tree');
 
@@ -289,11 +283,4 @@ const main = (): void => {
   render();
 };
 
-// Wait for the DOM to be parsed before initialising. `<script type="module">`
-// is deferred by browsers, but some widget hosts strip type="module" or run
-// scripts eagerly, which would otherwise race the inline JSON data script.
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', main, { once: true });
-} else {
-  main();
-}
+readyDOM(main);
