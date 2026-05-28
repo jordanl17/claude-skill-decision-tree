@@ -20,7 +20,7 @@ jobs:
           version: 10.10.0
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
       - name: Activate CI install recipe
         # pnpm.overrides link: paths only exist on a developer laptop with the
@@ -70,7 +70,7 @@ jobs:
           version: 10.10.0
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: migration/pnpm-lock.yaml
 
