@@ -93,6 +93,8 @@ jobs:
           pnpm build:zip
 
       - name: Run parity gates
+        env:
+          STRUCTURAL_DIFF_SCRIPT: ${{ github.workspace }}/migration/node_modules/@visill/test/scripts/structural-html-diff.mjs
         run: |
           bash migration/scripts/parity-check.sh \
             migration/decision-tree.zip \

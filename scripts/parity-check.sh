@@ -24,7 +24,7 @@
 set -euo pipefail
 
 REPORT_PATH="${REPORT_PATH:-parity-report.json}"
-STRUCTURAL_DIFF_SCRIPT="node_modules/@visill/test/scripts/structural-html-diff.mjs"
+STRUCTURAL_DIFF_SCRIPT="${STRUCTURAL_DIFF_SCRIPT:-node_modules/@visill/test/scripts/structural-html-diff.mjs}"
 ALLOWED_DELTA_PATH_SUFFIX="widget-bundled.html"
 SIZE_TOLERANCE="0.05"
 
@@ -140,7 +140,7 @@ gate_per_file_byte_equal() {
   local tree_b="$2"
 
   local diff_output
-  diff_output=$(diff -r "$tree_a" "$tree_b" 2>&1 || true)
+  diff_output=$(diff -rq "$tree_a" "$tree_b" 2>&1 || true)
 
   if [ -z "$diff_output" ]; then
     record_gate "per-file-byte-equal" "pass" "trees identical"
@@ -182,12 +182,17 @@ gate_structural_html_diff() {
     return
   fi
 
+  local stripped_a="${WORK_DIR}/bundle-a-no-module.html"
+  local stripped_b="${WORK_DIR}/bundle-b-no-module.html"
+  perl -0pe 's|<script type="module"[^>]*>.*?</script>||gs' "$bundle_a" > "$stripped_a"
+  perl -0pe 's|<script type="module"[^>]*>.*?</script>||gs' "$bundle_b" > "$stripped_b"
+
   local diff_output
   local exit_code=0
-  diff_output=$(node "$STRUCTURAL_DIFF_SCRIPT" "$bundle_a" "$bundle_b" 2>&1) || exit_code=$?
+  diff_output=$(node "$STRUCTURAL_DIFF_SCRIPT" "$stripped_a" "$stripped_b" 2>&1) || exit_code=$?
 
   if [ "$exit_code" -eq 0 ]; then
-    record_gate "structural-html-diff" "pass" "structural equality"
+    record_gate "structural-html-diff" "pass" "data-island skeleton + style blob equal; module-script body excluded per ADR 0021"
     return
   fi
 
