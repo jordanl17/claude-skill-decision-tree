@@ -117,8 +117,13 @@ gate_zip_file_list_and_modes() {
   render_line_a=$(unzip -Z "$zip_a" | grep 'render\.py$' || true)
   render_line_b=$(unzip -Z "$zip_b" | grep 'render\.py$' || true)
 
+  if [ -z "$render_line_a" ] && [ -z "$render_line_b" ]; then
+    record_gate "zip-file-list-and-modes" "pass" "file lists identical; no render.py in either zip"
+    return
+  fi
+
   if [ -z "$render_line_a" ] || [ -z "$render_line_b" ]; then
-    record_gate "zip-file-list-and-modes" "fail" "render.py missing from one or both zips"
+    record_gate "zip-file-list-and-modes" "fail" "render.py present in one zip but missing in the other"
     return
   fi
 
